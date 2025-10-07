@@ -4,6 +4,7 @@ import duckdb
 import requests
 import zipfile
 import io
+import matplotlib.pyplot as plt
 
 # URL dos dados de bicicletas de Chicago (Divvy Trips)
 DATA_URL = "https://divvy-tripdata.s3.amazonaws.com/202509-divvy-tripdata.zip"
@@ -21,10 +22,11 @@ with zipfile.ZipFile(zip_file, 'r') as z:
     # ler o primeiro arquivo CSV encontrado
     with z.open(csv_files[0]) as f:
         df = pd.read_csv(f)
+
 #%%
-print(df.info())
+#print(df.info())
 #%%
-print(df.head())
+#print(df.head())
 #%%
 # faz o tratamento dos dados
 df.dropna(inplace=True)
@@ -40,22 +42,17 @@ df['rideable_type'] = df['rideable_type'].map(tipo_traduzido)
 # carregar os dados em um banco de dados DuckDB
 con = duckdb.connect()
 con.register('trips', df)
+
 #%%
+# consulta as 15 estações de início mais populares
 result = con.execute("""
-                     SELECT 
-                        start_station_name, count(*) as count
-                     FROM 
-                        trips 
-                     WHERE
-                        start_station_name <> 'None'
-                     GROUP BY 
-                        start_station_name 
-                     ORDER BY 
-                        COUNT(*) DESC 
+                     SELECT start_station_name, count(*) as count
+                       FROM trips 
+                      WHERE start_station_name <> 'None'
+                      GROUP BY start_station_name 
+                      ORDER BY COUNT(*) DESC 
                      LIMIT 15""").fetchdf()
-print(result)
-#%%
-import matplotlib.pyplot as plt
+
 # plotar os resultados
 plt.figure(figsize=(10,6))
 plt.barh(result['start_station_name'], result['count'], color='skyblue')
@@ -78,7 +75,7 @@ result = con.execute("""
 print(result.head())
 
 #%%
-
+# consulta a duração média das viagens por tipo de bicicleta
 result = con.execute("""
                         SELECT 
                             rideable_type,
@@ -90,8 +87,7 @@ result = con.execute("""
                         ORDER BY
                             avg_duration_seconds DESC
                         """).fetchdf()
-print(result)
-#%%
+
 # plotar os resultados
 plt.figure(figsize=(8,5))
 plt.bar(result['rideable_type'], result['avg_duration_seconds'] / 60, color='salmon')
@@ -101,6 +97,7 @@ plt.title('Duração Média das Viagens por Tipo de Bicicleta')
 plt.show()
 #%%
 
+# consulta o número total de viagens por tipo de bicicleta
 result = con.execute("""
                         SELECT 
                             rideable_type,
@@ -121,6 +118,7 @@ plt.ylabel('Número Total de Viagens')
 plt.title('Número Total de Viagens por Tipo de Bicicleta')
 plt.show()
 #%%
+
 # consulta a duração média das viagens por dia da semana
 result = con.execute("""
                         SELECT 
@@ -143,8 +141,6 @@ result = con.execute("""
                         ORDER BY
                             dia_semana_num
                         """).fetchdf()
-print(result)
-
 # plotar os resultados
 plt.figure(figsize=(10,6))
 plt.bar(result['dia_semana'], result['avg_duration_seconds'] / 60, color='orchid')
